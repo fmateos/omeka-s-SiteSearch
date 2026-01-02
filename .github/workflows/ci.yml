@@ -1,4 +1,3 @@
----
 name: CI
 
 on:
@@ -7,36 +6,76 @@ on:
     tags:
       - '*'
     branches:
-      - '*' 
+      - '*'
 
 jobs:
-  lint_and_test:
+  build:
     runs-on: ubuntu-latest
+    name: Build & Dependencies
     steps:
-      # Checkout the code
       - uses: actions/checkout@v4
-
+      
       - name: PHP setup
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'  # Adjust the version according to your needs
+          php-version: '8.3'
           extensions: mbstring, intl, curl, dom, json, pdo, mysql, xml, zip
           tools: composer
-
+      
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist
-
+      
       - name: Install gettext
         run: sudo apt-get install -y gettext
 
-      - name: Check untranslated strings
-        run: make check-untranslated
-
-      - name: Generate .mo file
-        run: make compile-mo
-
+  lint:
+    runs-on: ubuntu-latest
+    name: Code Linting
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: PHP setup
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, intl, curl, dom, json, pdo, mysql, xml, zip
+          tools: composer
+      
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+      
+      - name: Install gettext
+        run: sudo apt-get install -y gettext
+      
       - name: Run code linting
         run: make lint
 
+  test:
+    runs-on: ubuntu-latest
+    name: Unit & Integration Tests
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: PHP setup
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, intl, curl, dom, json, pdo, mysql, xml, zip
+          tools: composer
+      
+      - name: Install dependencies
+        run: composer install --no-interaction --prefer-dist
+      
+      - name: Install gettext
+        run: sudo apt-get install -y gettext
+      
+      - name: Check untranslated strings
+        run: make check-untranslated
+      
+      - name: Generate .mo file
+        run: make compile-mo
+      
       - name: Run unit tests
         run: make test
