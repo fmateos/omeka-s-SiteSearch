@@ -106,44 +106,59 @@ jobs:
       - name: Create data directory
         run: mkdir -p data
       
-      - name: Build Docker images
-        run: docker compose build
-      
-      - name: Start services (detached)
-        run: docker compose up -d
-      
-      - name: Wait for MariaDB to be healthy
+      - name: Start services with wait
         run: |
-          echo "Waiting for MariaDB..."
-          timeout 60 bash -c 'until docker compose exec -T mariadb mysqladmin ping -h mariadb -u omeka -pomeka --silent; do sleep 2; done'
-          echo "✅ MariaDB is ready"
+          echo "Starting services and waiting for health checks..."
+          docker compose up -d --wait --wait-timeout 120
+          echo "✅ All services are healthy"
       
-      - name: Wait for Omeka S to be ready
+      - name: Verify services are running
         run: |
-          echo "Waiting for Omeka S to start..."
-          timeout 120 bash -c 'until curl -sf http://localhost:8080/admin > /dev/null; do echo "Waiting..."; sleep 5; done'
-          echo "✅ Omeka S is responding"
+          echo "=== Docker Compose Services Status ==="
+          docker compose ps
+          echo ""
+          echo "=== Container Health Status ==="
+          docker ps --format "table {{.Names}}\t{{.Status}}"
       
-      - name: Check services status
-        run: docker compose ps
+      - name: Wait for Omeka S admin interface
+        run: |
+          echo "Verifying Omeka S admin is accessible..."
+          timeout 60 bash -c 'until curl -sf http://localhost:8080/admin > /dev/null 2>&1; do echo "Waiting for Omeka S..."; sleep 3; done'
+          echo "✅ Omeka S admin interface is responding"
       
       - name: Verify SiteSearch module is mounted
         run: |
-          echo "Checking if SiteSearch module is present..."
-          docker compose exec -T omekas ls -la /var/www/html/volume/modules/SiteSearch
+          echo "Checking if SiteSearch module files are present..."
+          docker compose exec -T omekas ls -la /var/www/html/volume/modules/SiteSearch || {
+            echo "❌ Module directory not found"
+            exit 1
+          }
           echo "✅ Module files are mounted correctly"
       
-      - name: Check Omeka logs for errors
-        if: always()
+      - name: Test database connectivity from Omeka
+        run: |
+          echo "Testing database connection..."
+          docker compose exec -T omekas sh -c 'php -r "new PDO(\"mysql:host=mariadb;dbname=omeka\", \"omeka\", \"omeka\");"' && {
+            echo "✅ Database connection successful"
+          } || {
+            echo "❌ Database connection failed"
+            exit 1
+          }
+      
+      - name: Show Omeka logs on success
+        if: success()
+        run: |
+          echo "=== Recent Omeka S Logs ==="
+          docker compose logs omekas --tail=30
+      
+      - name: Show logs on failure
+        if: failure()
         run: |
           echo "=== Omeka S Logs ==="
-          docker compose logs omekas --tail=50
-      
-      - name: Check MariaDB logs
-        if: always()
-        run: |
+          docker compose logs omekas --tail=100
+          echo ""
           echo "=== MariaDB Logs ==="
-          docker compose logs mariadb --tail=30
+          docker compose logs mariadb --tail=50
       
       - name: Cleanup
         if: always()
