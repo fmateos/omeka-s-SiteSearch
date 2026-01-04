@@ -1,0 +1,77 @@
+name: CD - Pre-Release (Development)
+
+on:
+  push:
+    branches:
+      - develop
+
+permissions:
+  contents: write
+
+jobs:
+  pre-release:
+    name: Create Development Pre-Release
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+      
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-dev
+      
+      - name: Generate dev version
+        id: version
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          VERSION=${LAST_TAG#v}
+          COMMIT_SHORT=$(git rev-parse --short HEAD)
+          DEV_VERSION="${VERSION}-dev+${COMMIT_SHORT}"
+          echo "version=$DEV_VERSION" >> $GITHUB_OUTPUT
+          echo "Dev version: $DEV_VERSION"
+      
+      - name: Generate package
+        run: make package VERSION=${{ steps.version.outputs.version }}
+      
+      - name: Delete existing dev release (if exists)
+        run: |
+          gh release delete dev --yes || true
+          git push origin :refs/tags/dev || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Create development pre-release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: dev
+          name: 🚧 Development Build
+          body: |
+            ## ⚠️ Development Pre-Release
+            
+            **Version:** `${{ steps.version.outputs.version }}`  
+            **Commit:** `${{ github.sha }}`  
+            **Branch:** `develop`  
+            **Date:** `${{ github.event.head_commit.timestamp }}`
+            
+            This is an **unstable development build** from the `develop` branch.  
+            Use at your own risk for testing purposes only.
+            
+            ### Installation
+            1. Download the ZIP below
+            2. Extract to `/modules/SiteSearch/`
+            3. Enable in Admin → Modules
+            
+            For stable releases, see [Releases](../../releases).
+          files: |
+            SiteSearch-${{ steps.version.outputs.version }}.zip
+          draft: false
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
