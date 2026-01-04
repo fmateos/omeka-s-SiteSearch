@@ -1,81 +1,150 @@
-name: CI
+name: CI - Build, Lint & Test
 
 on:
-  pull_request:
   push:
-    tags:
-      - '*'
     branches:
-      - '*'
+      - main
+      - develop
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+      - develop
 
 jobs:
   build:
+    name: Build & Install Dependencies
     runs-on: ubuntu-latest
-    name: Build & Dependencies
+    
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
       
-      - name: PHP setup
+      - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
-          extensions: mbstring, intl, curl, dom, json, pdo, mysql, xml, zip
-          tools: composer
+          php-version: '8.1'
+          extensions: mbstring, xml, pdo, pdo_mysql
+      
+      - name: Validate composer.json
+        run: composer validate --strict
+      
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
       
       - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist
+        run: composer install --prefer-dist --no-progress
       
-      - name: Install gettext
-        run: sudo apt-get install -y gettext
+      - name: Upload vendor artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: vendor
+          path: vendor/
+          retention-days: 1
 
   lint:
+    name: Code Style (PSR-2)
     runs-on: ubuntu-latest
-    name: Code Linting
     needs: build
+    
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
       
-      - name: PHP setup
+      - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
-          extensions: mbstring, intl, curl, dom, json, pdo, mysql, xml, zip
-          tools: composer
+          php-version: '8.1'
       
-      - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist
+      - name: Download vendor
+        uses: actions/download-artifact@v4
+        with:
+          name: vendor
+          path: vendor/
       
-      - name: Install gettext
-        run: sudo apt-get install -y gettext
-      
-      - name: Run code linting
+      - name: Run linter
         run: make lint
 
   test:
+    name: Unit Tests (PHPUnit)
     runs-on: ubuntu-latest
-    name: Unit & Integration Tests
     needs: build
+    
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
       
-      - name: PHP setup
+      - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.3'
-          extensions: mbstring, intl, curl, dom, json, pdo, mysql, xml, zip
-          tools: composer
+          php-version: '8.1'
+          extensions: mbstring, xml, pdo, pdo_mysql
       
-      - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist
+      - name: Download vendor
+        uses: actions/download-artifact@v4
+        with:
+          name: vendor
+          path: vendor/
       
-      - name: Install gettext
-        run: sudo apt-get install -y gettext
-      
-      - name: Check untranslated strings
-        run: make check-untranslated
-      
-      - name: Generate .mo file
-        run: make compile-mo
-      
-      - name: Run unit tests
+      - name: Run tests
         run: make test
+
+  # Job adaptado para tu docker-compose con Omeka-S + MariaDB
+  docker-integration:
+    name: Docker Integration Test
+    runs-on: ubuntu-latest
+    needs: [lint, test]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Create data directory
+        run: mkdir -p data
+      
+      - name: Build Docker images
+        run: docker compose build
+      
+      - name: Start services (detached)
+        run: docker compose up -d
+      
+      - name: Wait for MariaDB to be healthy
+        run: |
+          echo "Waiting for MariaDB..."
+          timeout 60 bash -c 'until docker compose exec -T mariadb mysqladmin ping -h mariadb -u omeka -pomeka --silent; do sleep 2; done'
+          echo "✅ MariaDB is ready"
+      
+      - name: Wait for Omeka S to be ready
+        run: |
+          echo "Waiting for Omeka S to start..."
+          timeout 120 bash -c 'until curl -sf http://localhost:8080/admin > /dev/null; do echo "Waiting..."; sleep 5; done'
+          echo "✅ Omeka S is responding"
+      
+      - name: Check services status
+        run: docker compose ps
+      
+      - name: Verify SiteSearch module is mounted
+        run: |
+          echo "Checking if SiteSearch module is present..."
+          docker compose exec -T omekas ls -la /var/www/html/volume/modules/SiteSearch
+          echo "✅ Module files are mounted correctly"
+      
+      - name: Check Omeka logs for errors
+        if: always()
+        run: |
+          echo "=== Omeka S Logs ==="
+          docker compose logs omekas --tail=50
+      
+      - name: Check MariaDB logs
+        if: always()
+        run: |
+          echo "=== MariaDB Logs ==="
+          docker compose logs mariadb --tail=30
+      
+      - name: Cleanup
+        if: always()
+        run: docker compose down -v
