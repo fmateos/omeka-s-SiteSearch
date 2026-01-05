@@ -157,7 +157,7 @@ i18n: generate-pot update-po check-untranslated compile-mo
 .PHONY: test
 test: deps-update
 	@echo "Running unit tests..."
-	"vendor/bin/phpunit" -c test/phpunit.xml
+	"vendor/bin/phpunit" -c test/phpunit.xml --colors --testdox
 
 # Display help with available commands
 help:

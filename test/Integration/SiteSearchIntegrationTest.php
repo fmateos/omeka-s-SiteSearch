@@ -6,7 +6,7 @@ use SiteSearch\Service\SiteSearchService;
 
 /**
  * Q2: Acceptance/Integration Tests - Business-facing, critique product
- * 
+ *
  * Tests the complete workflow from user input to filtered results.
  * Validates that the feature works as expected from business perspective.
  */
@@ -31,7 +31,7 @@ class SiteSearchIntegrationTest extends TestCase
 
     /**
      * Scenario: Admin searches for sites containing "library"
-     * 
+     *
      * Given I am on the sites administration page
      * When I search for "library"
      * Then I should see "Digital Library" and "Library Portal"
@@ -56,7 +56,7 @@ class SiteSearchIntegrationTest extends TestCase
 
     /**
      * Scenario: Admin searches with mixed case
-     * 
+     *
      * Given I am on the sites administration page
      * When I search for "MUSEUM" in uppercase
      * Then I should see "Museum Catalog"
@@ -76,7 +76,7 @@ class SiteSearchIntegrationTest extends TestCase
 
     /**
      * Scenario: Admin clears search to see all sites
-     * 
+     *
      * Given I am on the sites administration page
      * And I previously searched for something
      * When I clear the search field
@@ -101,7 +101,7 @@ class SiteSearchIntegrationTest extends TestCase
 
     /**
      * Scenario: Admin searches for non-existent site
-     * 
+     *
      * Given I am on the sites administration page
      * When I search for a term that matches no sites
      * Then I should see "No sites found" message
@@ -123,7 +123,7 @@ class SiteSearchIntegrationTest extends TestCase
 
     /**
      * Scenario: Search handles special characters safely
-     * 
+     *
      * Given I am on the sites administration page
      * When I search with special characters
      * Then the search should not break
@@ -147,7 +147,7 @@ class SiteSearchIntegrationTest extends TestCase
 
     /**
      * Scenario: Search handles accented characters
-     * 
+     *
      * Given I am on the sites administration page
      * When I search with accented characters
      * Then the search should match correctly (case-insensitive but accent-sensitive)

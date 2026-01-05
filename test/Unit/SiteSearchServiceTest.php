@@ -6,7 +6,7 @@ use SiteSearch\Service\SiteSearchService;
 
 /**
  * Q1: Unit Tests - Technology-facing, supporting development
- * 
+ *
  * Tests the SiteSearchService in isolation with mock data.
  * These tests guide the implementation (TDD Red-Green-Refactor).
  */

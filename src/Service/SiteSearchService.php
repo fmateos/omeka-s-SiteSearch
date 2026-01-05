@@ -3,7 +3,7 @@ namespace SiteSearch\Service;
 
 /**
  * Service for filtering sites by search criteria
- * 
+ *
  * This service provides search functionality for Omeka-S sites.
  * It is designed to be framework-agnostic for easy unit testing.
  */
@@ -11,10 +11,10 @@ class SiteSearchService
 {
     /**
      * Filter sites by search term
-     * 
+     *
      * Searches for sites whose title contains the search term.
      * Search is case-insensitive.
-     * 
+     *
      * @param array $sites Array of site data with 'title' key
      * @param string|null $searchTerm Term to search for (null or empty = all sites)
      * @return array Filtered array of sites
@@ -30,7 +30,7 @@ class SiteSearchService
 
     /**
      * Determine if search should return all sites
-     * 
+     *
      * @param string|null $searchTerm
      * @return bool
      */
@@ -41,7 +41,7 @@ class SiteSearchService
 
     /**
      * Filter sites by title containing search term
-     * 
+     *
      * @param array $sites
      * @param string $searchTerm
      * @return array
@@ -60,7 +60,7 @@ class SiteSearchService
 
     /**
      * Normalize search term for comparison
-     * 
+     *
      * @param string $searchTerm
      * @return string
      */
@@ -71,7 +71,7 @@ class SiteSearchService
 
     /**
      * Check if site matches search criteria
-     * 
+     *
      * @param array $site
      * @param string $normalizedSearch
      * @return bool
