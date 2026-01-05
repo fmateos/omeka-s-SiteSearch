@@ -1,10 +1,10 @@
 services:
-
   omekas:
     image: erseco/alpine-omeka-s:develop
     restart: unless-stopped
     depends_on:
-      - mariadb
+      mariadb:
+        condition: service_healthy  # Esperar a que MariaDB esté lista
     ports:
       - "8080:8080"
     environment:
@@ -20,13 +20,11 @@ services:
       OMEKA_ADMIN_NAME: "Site Administrator"
       OMEKA_ADMIN_PASSWORD: PLEASE_CHANGEME
       OMEKA_SITE_TITLE: "Omeka S Sample Site"
-      # Auto-import sample data CSV on first boot (requires CSVImport module)
       OMEKA_CSV_IMPORT_FILE: /data/sample_data.csv
-      # App environment and base URL
       APPLICATION_ENV: development
       SITE_URL: http://localhost:8080
 
-      # Minimal themes/modules set (names or URLs supported)
+      # Minimal themes/modules
       OMEKA_THEMES: "default"
       OMEKA_MODULES: |
         Common
@@ -34,20 +32,23 @@ services:
         Adminer
         Log
 
-      # Hooks to finish configuration on first boot
+      # Hooks - cambiar ModuleTemplate por SiteSearch
       PRE_CONFIGURE_COMMANDS: |
         echo 'Pre-configure hook'
       POST_CONFIGURE_COMMANDS: |
-        # Create an Editor user if missing
         omeka-s-cli user:add "editor@example.com" "Editor" editor "1234" || true
-
-        # Enable the ModuleTemplate module from local source
-        omeka-s-cli module:install ModuleTemplate || true
+        omeka-s-cli module:install SiteSearch || true
 
     volumes:
       - omekas_data:/var/www/html/volume:Z
-      - ./:/var/www/html/volume/modules/ModuleTemplate
+      - ./:/var/www/html/volume/modules/SiteSearch  # Cambio aquí
       - ./data:/data:ro
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/admin"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 45s
 
   mariadb:
     image: mariadb:latest
@@ -60,10 +61,11 @@ services:
     volumes:
       - mariadb_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-homariadb", "-uomeka", "-pomeka"]
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 15
+      start_period: 45s
 
 volumes:
   mariadb_data:

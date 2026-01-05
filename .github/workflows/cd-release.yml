@@ -1,0 +1,87 @@
+name: CD - Release & Package
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+      
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-dev --optimize-autoloader
+      
+      - name: Extract version from tag
+        id: version
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Packaging version: $VERSION"
+      
+      - name: Generate module package
+        run: make package VERSION=${{ steps.version.outputs.version }}
+      
+      - name: Verify package structure
+        run: |
+          echo "=== Package contents ==="
+          ls -lh SiteSearch-${{ steps.version.outputs.version }}.zip
+          unzip -l SiteSearch-${{ steps.version.outputs.version }}.zip | head -30
+      
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
+          else
+            CHANGELOG=$(git log $PREV_TAG..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          fi
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ steps.version.outputs.version }}
+          body: |
+            ## 🚀 SiteSearch Module v${{ steps.version.outputs.version }}
+            
+            ### Changes in this release:
+            ${{ steps.changelog.outputs.changelog }}
+            
+            ### Installation
+            1. Download `SiteSearch-${{ steps.version.outputs.version }}.zip`
+            2. Extract to `/modules/SiteSearch/` in your Omeka-S installation
+            3. Run: `php application/data/scripts/install-module.php SiteSearch`
+            4. Or enable via Admin → Modules
+            
+            ### Requirements
+            - Omeka S 4.0+
+            - PHP 8.1+
+            - MySQL/MariaDB 5.7+
+          files: |
+            SiteSearch-${{ steps.version.outputs.version }}.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Notify success
+        run: |
+          echo "✅ Release v${{ steps.version.outputs.version }} published"
+          echo "📦 Download: https://github.com/${{ github.repository }}/releases/tag/v${{ steps.version.outputs.version }}"

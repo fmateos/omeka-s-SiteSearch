@@ -58,11 +58,11 @@ build: check-docker
 
 # Run the linter to check PHP code style
 lint: deps-update
-	"vendor/bin/phpcs" . --standard=PSR2 --ignore=vendor/,assets/,node_modules/,tests/js/,tests/ --colors --extensions=php
+	php "vendor/bin/phpcs" . --standard=PSR2 --ignore=vendor/,assets/,node_modules/,tests/js/,tests/ --colors --extensions=php
 
 # Automatically fix PHP code style issues
 fix: deps-update
-	"vendor/bin/phpcbf" . --standard=PSR2 --ignore=vendor/,assets/,node_modules/,tests/js/,tests/ --colors --extensions=php
+	php "vendor/bin/phpcbf" . --standard=PSR2 --ignore=vendor/,assets/,node_modules/,tests/js/,tests/ --colors --extensions=php
 
 # Open a shell inside the omekas container
 shell: check-docker
@@ -72,7 +72,7 @@ shell: check-docker
 clean: check-docker
 	docker compose down -v --remove-orphans
 
-# Generate the ModuleTemplate-X.X.X.zip package
+# Generate the SiteSearch-X.X.X.zip package
 package:
 	@if [ -z "$(VERSION)" ]; then \
 		echo "Error: VERSION not specified. Use 'make package VERSION=1.2.3'"; \
@@ -80,8 +80,8 @@ package:
 	fi
 	@echo "Updating version to $(VERSION) in module.ini..."
 	$(SED_INPLACE) 's/^\([[:space:]]*version[[:space:]]*=[[:space:]]*\).*$$/\1"$(VERSION)"/' config/module.ini
-	@echo "Creating ZIP archive: ModuleTemplate-$(VERSION).zip..."
-	composer archive --format=zip --file="ModuleTemplate-$(VERSION)"
+	@echo "Creating ZIP archive: SiteSearch-$(VERSION).zip..."
+	composer archive --format=zip --file="SiteSearch-$(VERSION)"
 	@echo "Restoring version to 0.0.0 in module.ini..."
 	$(SED_INPLACE) 's/^\([[:space:]]*version[[:space:]]*=[[:space:]]*\).*$$/\1"0.0.0"/' config/module.ini
 
@@ -157,7 +157,7 @@ i18n: generate-pot update-po check-untranslated compile-mo
 .PHONY: test
 test: deps-update
 	@echo "Running unit tests..."
-	"vendor/bin/phpunit" -c test/phpunit.xml --colors --testdox
+	php "vendor/bin/phpunit" -c test/phpunit.xml --testdox --colors=auto
 
 # Display help with available commands
 help:
