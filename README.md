@@ -68,3 +68,4 @@ ModuleTemplate/
 
 Published under the GNU GPLv3 license. See [LICENSE](LICENSE).
 
+test
