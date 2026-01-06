@@ -41,12 +41,12 @@
     },
     "autoload": {
         "psr-4": {
-            "ModuleTemplate\\": "src/"
+            "SiteSearch\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "ModuleTemplateTest\\": "test/"
+            "SiteSearchTest\\": "test/"
         }
     },
     "repositories": [
