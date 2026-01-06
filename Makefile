@@ -185,7 +185,7 @@ help:
 	@echo ""
 	@echo "Packaging:"
 	@echo "  package           - Generate a .zip package of the module with version tag"
-	@echo ""<
+	@echo ""
 	@echo "Data & module:"
 	@echo "  import-sample     - Import sample CSV inside the container"
 	@echo "  enable-module     - Enable this module inside Omeka S"
